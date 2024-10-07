@@ -74,6 +74,63 @@ CUSTOM_COMMAND_SIG(move_eol)
     seek_end_of_line(app);
 }
 
+CUSTOM_COMMAND_SIG(move_up_blank)
+{
+    move_up_to_blank_line(app);
+}
+
+CUSTOM_COMMAND_SIG(move_down_blank)
+{
+    move_down_to_blank_line(app);
+}
+
+CUSTOM_COMMAND_SIG(move_up_half)
+{
+    View_ID v = get_active_view(app, Access_ReadVisible);
+    f32 h = get_page_jump(app, v);
+    move_vertical_pixels(app, -h / 2);
+}
+
+CUSTOM_COMMAND_SIG(move_down_half)
+{
+    View_ID v = get_active_view(app, Access_ReadVisible);
+    f32 h = get_page_jump(app, v);
+    move_vertical_pixels(app, h / 2);
+}
+
+CUSTOM_COMMAND_SIG(centre_view_mid)
+{
+    center_view(app);
+}
+
+CUSTOM_COMMAND_SIG(centre_view_top)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Rect_f32 region = view_get_buffer_region(app, view);
+    i64 pos = view_get_cursor_pos(app, view);
+    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+    f32 view_height = rect_height(region);
+    Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+    scroll.target.line_number = cursor.line;
+    scroll.target.pixel_shift.y = -view_height * 0.1f;
+    view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+    no_mark_snap_to_cursor(app, view);
+}
+
+CUSTOM_COMMAND_SIG(centre_view_bot)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Rect_f32 region = view_get_buffer_region(app, view);
+    i64 pos = view_get_cursor_pos(app, view);
+    Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
+    f32 view_height = rect_height(region);
+    Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+    scroll.target.line_number = cursor.line;
+    scroll.target.pixel_shift.y = -view_height * 0.9f;
+    view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+    no_mark_snap_to_cursor(app, view);
+}
+
 CUSTOM_COMMAND_SIG(delete_white_left)
 {
     set_mark(app);
@@ -152,6 +209,12 @@ CUSTOM_COMMAND_SIG(modal_delete_eol)
     switch_mode_normal(app);
 }
 
+CUSTOM_COMMAND_SIG(modal_delete_line)
+{
+    delete_line(app);
+    switch_mode_normal(app);
+}
+
 void
 custom_layer_init(Application_Links *app){
     Thread_Context *tctx = get_thread_context(app);
@@ -194,23 +257,60 @@ custom_layer_init(Application_Links *app){
     Bind(move_right, KeyCode_Right);
     Bind(move_up, KeyCode_Up);
     Bind(move_down, KeyCode_Down);
+    
+    Bind(cut, KeyCode_X, KeyCode_Control);
+    Bind(copy, KeyCode_C, KeyCode_Control);
+    Bind(paste, KeyCode_V, KeyCode_Control);
+    Bind(delete_range, KeyCode_D, KeyCode_Control);
+    Bind(save, KeyCode_S, KeyCode_Control);
+    
     Bind(exit_4coder, KeyCode_F4, KeyCode_Alt);
     
     // Normal
     SelectMap(mapid_normal);
     ParentMap(mapid_shared);
-    Bind(switch_mode_insert, KeyCode_Tab);
+    Bind(switch_mode_insert, KeyCode_I);
     Bind(switch_mode_delete, KeyCode_D);
+    
+    Bind(move_left, KeyCode_H);
+    Bind(move_right, KeyCode_L);
+    Bind(move_up, KeyCode_K);
+    Bind(move_down, KeyCode_J);
+    
+    Bind(move_token_left, KeyCode_H, KeyCode_Shift);
+    Bind(move_token_right, KeyCode_L, KeyCode_Shift);
+    Bind(move_up_blank, KeyCode_K, KeyCode_Shift);
+    Bind(move_down_blank, KeyCode_J, KeyCode_Shift);
+    
+    Bind(move_white_left, KeyCode_H, KeyCode_Control);
+    Bind(move_white_right, KeyCode_L, KeyCode_Control);
+    Bind(move_up_half, KeyCode_K, KeyCode_Control);
+    Bind(move_down_half, KeyCode_J, KeyCode_Control);
+    
+    Bind(move_white_left, KeyCode_H, KeyCode_Control, KeyCode_Shift);
+    Bind(move_white_right, KeyCode_L, KeyCode_Control, KeyCode_Shift);
+    Bind(move_up_half, KeyCode_K, KeyCode_Control, KeyCode_Shift);
+    Bind(move_down_half, KeyCode_J, KeyCode_Control, KeyCode_Shift);
+    
+    Bind(centre_view_mid, KeyCode_Equal);
+    Bind(centre_view_top, KeyCode_Minus);
+    Bind(centre_view_bot, KeyCode_Minus, KeyCode_Shift);
+    Bind(delete_line, KeyCode_D, KeyCode_Shift);
     
     // Insert
     SelectMap(mapid_insert);
     ParentMap(mapid_shared);
     BindTextInput(write_text_and_auto_indent);
     Bind(backspace_char, KeyCode_Backspace);
+    Bind(delete_token_left, KeyCode_Backspace, KeyCode_Shift);
+    Bind(delete_white_left, KeyCode_Backspace, KeyCode_Control);
+    Bind(delete_token_right, KeyCode_Delete, KeyCode_Shift);
+    Bind(delete_white_right, KeyCode_Delete, KeyCode_Control);
     
     // Delete
     SelectMap(mapid_delete);
     Bind(switch_mode_normal, KeyCode_Escape);
+    Bind(modal_delete_line, KeyCode_D);
     Bind(modal_delete_bol, KeyCode_Left, KeyCode_Control);
     Bind(modal_delete_eol, KeyCode_Right, KeyCode_Control);
     Bind(modal_delete_white_left, KeyCode_Left, KeyCode_Shift);
