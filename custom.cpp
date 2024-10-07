@@ -44,15 +44,111 @@ CUSTOM_COMMAND_SIG(switch_mode_delete)
     active_color_table.arrays[defcolor_at_cursor].vals[0] = 0xff0000ff;
 }
 
-CUSTOM_COMMAND_SIG(modal_delete_word_right)
+CUSTOM_COMMAND_SIG(move_white_left)
 {
-    delete_alpha_numeric_boundary(app);
+    move_left_whitespace_boundary(app);
+}
+
+CUSTOM_COMMAND_SIG(move_white_right)
+{
+    move_right_whitespace_boundary(app);
+}
+
+CUSTOM_COMMAND_SIG(move_token_left)
+{
+    move_left_whitespace_or_token_boundary(app);
+}
+
+CUSTOM_COMMAND_SIG(move_token_right)
+{
+    move_right_whitespace_or_token_boundary(app);
+}
+
+CUSTOM_COMMAND_SIG(move_bol)
+{
+    seek_beginning_of_line(app);
+}
+
+CUSTOM_COMMAND_SIG(move_eol)
+{
+    seek_end_of_line(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_white_left)
+{
+    set_mark(app);
+    move_white_left(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_white_right)
+{
+    set_mark(app);
+    move_white_right(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_token_left)
+{
+    set_mark(app);
+    move_token_left(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_token_right)
+{
+    set_mark(app);
+    move_token_right(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_bol)
+{
+    set_mark(app);
+    move_bol(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(delete_eol)
+{
+    set_mark(app);
+    move_eol(app);
+    delete_range(app);
+}
+
+CUSTOM_COMMAND_SIG(modal_delete_white_left)
+{
+    delete_white_left(app);
     switch_mode_normal(app);
 }
 
-CUSTOM_COMMAND_SIG(modal_delete_word_left)
+CUSTOM_COMMAND_SIG(modal_delete_white_right)
 {
-    backspace_alpha_numeric_boundary(app);
+    delete_white_right(app);
+    switch_mode_normal(app);
+}
+
+CUSTOM_COMMAND_SIG(modal_delete_token_left)
+{
+    delete_token_left(app);
+    switch_mode_normal(app);
+}
+
+CUSTOM_COMMAND_SIG(modal_delete_token_right)
+{
+    delete_token_right(app);
+    switch_mode_normal(app);
+}
+
+CUSTOM_COMMAND_SIG(modal_delete_bol)
+{
+    delete_bol(app);
+    switch_mode_normal(app);
+}
+
+CUSTOM_COMMAND_SIG(modal_delete_eol)
+{
+    delete_eol(app);
     switch_mode_normal(app);
 }
 
@@ -115,8 +211,12 @@ custom_layer_init(Application_Links *app){
     // Delete
     SelectMap(mapid_delete);
     Bind(switch_mode_normal, KeyCode_Escape);
-    Bind(modal_delete_word_left, KeyCode_Left);
-    Bind(modal_delete_word_right, KeyCode_Right);
+    Bind(modal_delete_bol, KeyCode_Left, KeyCode_Control);
+    Bind(modal_delete_eol, KeyCode_Right, KeyCode_Control);
+    Bind(modal_delete_white_left, KeyCode_Left, KeyCode_Shift);
+    Bind(modal_delete_white_right, KeyCode_Right, KeyCode_Shift);
+    Bind(modal_delete_token_left, KeyCode_Left);
+    Bind(modal_delete_token_right, KeyCode_Right);
     
     SelectMap(file_map_id);
     ParentMap(mapid_normal);
