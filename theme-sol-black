@@ -1,4 +1,4 @@
-defcolor_back = 0xFF1C1003;
+defcolor_back = 0xFF000000;
 defcolor_margin = 0xFF2C2C2C;
 defcolor_margin_hover = 0xFF7E7E7E;
 defcolor_margin_active = 0xFF4E4E4E;

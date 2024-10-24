@@ -32,7 +32,7 @@ indent_with_tabs = false;
 indent_width = 4;
 default_tab_width = 4;
 
-default_theme_name = "theme-sol";
+default_theme_name = "theme-sol-slate";
 
 default_font_name = "liberation-mono.bold.ttf";
 default_font_size = 12;
