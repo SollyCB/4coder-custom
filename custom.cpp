@@ -62,30 +62,45 @@ void set_current_mapid(Application_Links* app, Command_Map_ID mapid)
     *map_id_ptr = mapid;
 }
 
+#define CC_DEL 0xFFFF0000
+#define CT_DEL 0xFF000000
+
+static uint32_t theme_cc;
+static uint32_t theme_ct;
+
 CUSTOM_COMMAND_SIG(switch_mode_normal)
 {
     set_current_mapid(app, mapid_normal);
+    set_mode_to_original(app);
     
-    active_color_table.arrays[defcolor_cursor].vals[0] = 0xffff5533;
-    active_color_table.arrays[defcolor_at_cursor].vals[0] = 0xff00aacc;
-    active_color_table.arrays[defcolor_margin_active].vals[0] = 0xffff5533;
+    if (active_color_table.arrays[defcolor_cursor].vals[0] != CC_DEL)
+        return;
+    
+    active_color_table.arrays[defcolor_cursor].vals[0] = theme_cc;
+    active_color_table.arrays[defcolor_at_cursor].vals[0] = theme_ct;
 }
 
 CUSTOM_COMMAND_SIG(switch_mode_insert)
 {
     set_current_mapid(app, mapid_insert);
-    
-    active_color_table.arrays[defcolor_cursor].vals[0] = 0xff80ff80;
-    active_color_table.arrays[defcolor_at_cursor].vals[0] = 0xff293134;
-    active_color_table.arrays[defcolor_margin_active].vals[0] = 0xff80ff80;
+    set_mode_to_notepad_like(app);
 }
 
 CUSTOM_COMMAND_SIG(switch_mode_delete)
 {
     set_current_mapid(app, mapid_delete);
     
-    active_color_table.arrays[defcolor_cursor].vals[0] = 0xffffff00;
-    active_color_table.arrays[defcolor_at_cursor].vals[0] = 0xff0000ff;
+    theme_cc = active_color_table.arrays[defcolor_cursor].vals[0];
+    theme_ct = active_color_table.arrays[defcolor_at_cursor].vals[0];
+    
+    active_color_table.arrays[defcolor_cursor].vals[0] = 0xFFFF0000;
+    active_color_table.arrays[defcolor_at_cursor].vals[0] = 0xFF000000;
+}
+
+CUSTOM_COMMAND_SIG(change_range)
+{
+    delete_range(app);
+    switch_mode_insert(app);
 }
 
 CUSTOM_COMMAND_SIG(move_white_left)
@@ -202,6 +217,15 @@ CUSTOM_COMMAND_SIG(centre_view_bot)
     no_mark_snap_to_cursor(app, view);
 }
 
+CUSTOM_COMMAND_SIG(view_bol)
+{
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+    scroll.target.pixel_shift.x = 0; // 100.0f; // clamp_bot(0.f, p.x - 30.f);
+    view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+    no_mark_snap_to_cursor(app, view);
+}
+
 CUSTOM_COMMAND_SIG(delete_white_left)
 {
     set_mark(app);
@@ -301,7 +325,8 @@ CUSTOM_COMMAND_SIG(modal_delete_line)
 }
 
 void
-custom_layer_init(Application_Links *app){
+custom_layer_init(Application_Links *app)
+{
     Thread_Context *tctx = get_thread_context(app);
     
     default_framework_init(app);
@@ -336,6 +361,9 @@ custom_layer_init(Application_Links *app){
     BindMouseRelease(click_set_cursor, MouseCode_Left);
     BindCore(click_set_cursor_and_mark, CoreCode_ClickActivateView);
     BindMouseMove(click_set_cursor_if_lbutton);
+    
+    theme_cc = active_color_table.arrays[defcolor_cursor].vals[0];
+    theme_ct = active_color_table.arrays[defcolor_at_cursor].vals[0];
     
     Bind(command_lister, KeyCode_X, KeyCode_Alt);
     Bind(switch_mode_normal, KeyCode_Escape);
@@ -385,8 +413,11 @@ custom_layer_init(Application_Links *app){
     SelectMap(mapid_normal);
     ParentMap(mapid_shared);
     Bind(switch_mode_insert, KeyCode_I);
-    Bind(switch_mode_delete, KeyCode_D);
+    Bind(switch_mode_delete, KeyCode_D, KeyCode_Control);
+    Bind(delete_range, KeyCode_D);
+    Bind(change_range, KeyCode_C);
     
+    Bind(command_lister, KeyCode_Semicolon, KeyCode_Shift);
     Bind(undo, KeyCode_U);
     Bind(redo, KeyCode_U, KeyCode_Shift);
     
@@ -408,18 +439,20 @@ custom_layer_init(Application_Links *app){
     Bind(move_alpha_num_left, KeyCode_H, KeyCode_Alt);
     Bind(move_alpha_num_right, KeyCode_L, KeyCode_Alt);
     
-    Bind(move_white_left, KeyCode_H, KeyCode_Control, KeyCode_Shift);
-    Bind(move_white_right, KeyCode_L, KeyCode_Control, KeyCode_Shift);
+    Bind(move_bol, KeyCode_H, KeyCode_Control, KeyCode_Shift);
+    Bind(move_eol, KeyCode_L, KeyCode_Control, KeyCode_Shift);
+    Bind(move_bol, KeyCode_0);
+    Bind(move_eol, KeyCode_4, KeyCode_Shift);
     Bind(move_up_half, KeyCode_K, KeyCode_Control, KeyCode_Shift);
     Bind(move_down_half, KeyCode_J, KeyCode_Control, KeyCode_Shift);
     
     Bind(centre_view_mid, KeyCode_Equal);
     Bind(centre_view_top, KeyCode_Minus);
     Bind(centre_view_bot, KeyCode_Minus, KeyCode_Shift);
+    Bind(view_bol, KeyCode_BackwardSlash, KeyCode_Shift);
     
     Bind(line_up, KeyCode_K, KeyCode_Alt);
     Bind(line_down, KeyCode_J, KeyCode_Alt);
-    Bind(line_dup, KeyCode_M);
     Bind(set_mark, KeyCode_Space);
     Bind(swap_mark, KeyCode_Space, KeyCode_Control);
     
@@ -440,12 +473,14 @@ custom_layer_init(Application_Links *app){
     
     Bind(search, KeyCode_F);
     Bind(reverse_search, KeyCode_F, KeyCode_Shift);
+    
     Bind(list_def, KeyCode_T);
-    Bind(list_def_ident, KeyCode_T, KeyCode_Control);
+    Bind(list_def_ident, KeyCode_T, KeyCode_Control, KeyCode_Shift);
     Bind(list_ident_all, KeyCode_T, KeyCode_Shift);
-    Bind(list_all, KeyCode_F, KeyCode_Control);
-    Bind(list_all_substr, KeyCode_F, KeyCode_Alt);
-    Bind(list_all_sel, KeyCode_F, KeyCode_Control, KeyCode_Shift);
+    
+    Bind(list_all_substr, KeyCode_F, KeyCode_Control);
+    Bind(list_all, KeyCode_F, KeyCode_Control, KeyCode_Shift);
+    Bind(list_all_sel, KeyCode_F, KeyCode_Alt);
     
     Bind(new_line_below, KeyCode_O);
     Bind(new_line_above, KeyCode_O, KeyCode_Shift);
@@ -456,29 +491,36 @@ custom_layer_init(Application_Links *app){
     Bind(buf_open_other, KeyCode_B, KeyCode_Alt);
     Bind(buf_new, KeyCode_B, KeyCode_Control, KeyCode_Shift);
     
-    Bind(panel_switch, KeyCode_P);
-    Bind(panel_swap, KeyCode_P, KeyCode_Shift);
-    Bind(panel_dup, KeyCode_P, KeyCode_Alt);
+    Bind(panel_switch, KeyCode_Comma);
+    Bind(panel_swap, KeyCode_Comma, KeyCode_Shift);
+    Bind(panel_dup, KeyCode_Comma, KeyCode_Alt);
     
     Bind(replace_in_range, KeyCode_R);
-    Bind(replace_in_buffer, KeyCode_R, KeyCode_Shift);
-    Bind(replace_in_all_buffers, KeyCode_R, KeyCode_Control, KeyCode_Shift);
-    
-    Bind(query_replace, KeyCode_Q);
-    Bind(query_replace_identifier, KeyCode_Q, KeyCode_Shift);
-    Bind(query_replace_selection, KeyCode_Q, KeyCode_Control);
+    Bind(query_replace, KeyCode_R, KeyCode_Control);
+    Bind(query_replace_identifier, KeyCode_R, KeyCode_Alt);
+    Bind(replace_in_buffer, KeyCode_R, KeyCode_Control, KeyCode_Shift);
+    Bind(query_replace_selection, KeyCode_Q, KeyCode_Alt, KeyCode_Shift);
     
     Bind(build, KeyCode_M, KeyCode_Alt);
     Bind(build_open, KeyCode_M);
     Bind(build_close, KeyCode_M, KeyCode_Shift);
+    
+    Bind(macro_begin, KeyCode_Q);
+    Bind(macro_end, KeyCode_Q, KeyCode_Shift);
+    Bind(macro_replay, KeyCode_Q, KeyCode_Control);
     
     Bind(fkey_cmd, KeyCode_F1);
     Bind(fkey_cmd, KeyCode_F2);
     Bind(fkey_cmd, KeyCode_F3);
     Bind(fkey_cmd, KeyCode_F4);
     
+    Bind(copy, KeyCode_Y);
+    Bind(paste, KeyCode_P);
+    Bind(line_dup, KeyCode_Y, KeyCode_Shift);
+    
     Bind(comment_toggle, KeyCode_Semicolon, KeyCode_Control);
     Bind(delete_line, KeyCode_D, KeyCode_Shift);
+    Bind(delete_char, KeyCode_X);
     
     // Insert
     SelectMap(mapid_insert);
